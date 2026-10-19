@@ -28,6 +28,7 @@ def build(version: str, output_dir: Path, release_tag: str) -> tuple[Path, Path]
     metadata_file = atlas_dir / "atlas.json"
     if metadata_file.is_file():
         expected.append(metadata_file)
+    expected.extend(sorted(atlas_dir.glob("lod-v*-*.npz")))
 
     output_dir.mkdir(parents=True, exist_ok=True)
     archive = output_dir / f"AnatomiaViva3D-Content-{version}.zip"

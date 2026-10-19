@@ -8,10 +8,15 @@ source_root = project_root / "src"
 atlas_root = project_root / "data" / "zanatomy"
 
 required_files = list(atlas_root.glob("*.glb"))
-if len(required_files) != 7 or not (atlas_root / "TA2.csv").is_file():
+lightweight_files = list(atlas_root.glob("lod-v*-2000-*.glb.npz"))
+if (
+    len(required_files) != 7
+    or len(lightweight_files) != 7
+    or not (atlas_root / "TA2.csv").is_file()
+):
     raise SystemExit(
-        "O pacote completo exige os sete sistemas Z-Anatomy. Execute "
-        "'anatomia-dados instalar' antes do build."
+        "O pacote completo exige os sete sistemas Z-Anatomy e o cache leve. "
+        "Execute 'anatomia-dados instalar' e 'anatomia-dados otimizar' antes do build."
     )
 
 datas = [

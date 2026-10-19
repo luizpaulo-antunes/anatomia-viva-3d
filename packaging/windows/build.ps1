@@ -25,6 +25,7 @@ if (-not $SkipTests) {
 if (-not $SkipDataPreparation) {
     python -m anatomia_app.zanatomy instalar --destino "data\zanatomy"
     python -m anatomia_app.zanatomy verificar --destino "data\zanatomy"
+    python -m anatomia_app.zanatomy otimizar --destino "data\zanatomy"
 }
 
 python "tools\build_content_pack.py" --version $Version --output "release"

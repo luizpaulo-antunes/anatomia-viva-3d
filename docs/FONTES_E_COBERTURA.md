@@ -18,6 +18,8 @@ Uma revisão recente do arquivo não prova que toda geometria foi produzida rece
 
 O próprio projeto Z-Anatomy declara que parte das malhas deriva do BodyParts3D, que as definições dependem fortemente da Wikipédia e que ainda há estruturas ausentes e validação final pendente. O Anatomia Viva 3D mantém essas ressalvas visíveis.
 
+As definições textuais em inglês da fonte não são apresentadas ao estudante. A interface gera para cada item uma síntese em português baseada no sistema, na classe anatômica, na região, na lateralidade e, quando identificável pelo nome, na ação ou função específica. O texto informa sua natureza didática e não inventa origem, inserção ou inervação quando esses dados não estão disponíveis na fonte.
+
 ### Terminologia Anatomica 2 (TA2)
 
 A TA2 é o padrão internacional da IFAA/FIPAT para anatomia humana adulta. Foi publicada em 2019 e é mantida continuamente. O CSV multilíngue é usado sem alterar os termos; o pareamento com nomes das malhas é auditado.
@@ -53,7 +55,7 @@ anatomia-dados relatorio
 - o modelo principal representa anatomia masculina;
 - não representa variações anatômicas populacionais e individuais;
 - “estrutura selecionável” não equivale a “órgão” ou “músculo único”;
-- descrições da fonte estão majoritariamente em inglês e não constituem revisão clínica;
+- descrições da fonte estão majoritariamente em inglês, são usadas apenas na auditoria de cobertura e não constituem revisão clínica;
 - parte da geometria possui origem histórica anterior à revisão do repositório;
 - modelos de fontes diferentes não são combinados sem transformação e validação espacial.
 

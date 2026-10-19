@@ -26,6 +26,7 @@ Extraia o ZIP e execute `AnatomiaViva3D-Setup-<versão>.exe`. Python e a bibliot
 - pesquisa por nome em português, termo latino, sistema e região;
 - isolamento, ocultação, opacidade e filtros por sistema;
 - nomes em português associados à Terminologia Anatomica 2 quando disponíveis;
+- descrições, funções, classificações, regiões e lateralidade sempre exibidas em português;
 - fonte, revisão, licença e identificador TA2 exibidos por estrutura;
 - relatório de cobertura e verificação SHA-256 de todos os arquivos baixados;
 - funcionamento offline depois da instalação;
@@ -33,7 +34,7 @@ Extraia o ZIP e execute `AnatomiaViva3D-Setup-<versão>.exe`. Python e a bibliot
 
 ## Cobertura anatômica
 
-A biblioteca atual reúne **2.827 estruturas selecionáveis**, com nomes em português e latim, descrições de referência e informações sobre a origem dos dados. Os arquivos são versionados e verificados antes da instalação para que todos os usuários recebam a mesma biblioteca estável.
+A biblioteca atual reúne **2.827 estruturas selecionáveis**, com nomes em português e latim, sínteses didáticas em português e informações sobre a origem dos dados. As definições em inglês da fonte são preservadas somente para auditoria de cobertura e não são mostradas como conteúdo de estudo. Os arquivos são versionados e verificados antes da instalação para que todos os usuários recebam a mesma biblioteca estável.
 
 | Sistema | Malhas selecionáveis |
 | --- | ---: |
@@ -104,6 +105,12 @@ O primeiro comando de dados baixa a revisão fixada para `data/zanatomy`. Os arq
 
 Ao selecionar uma estrutura, a câmera a enquadra e as demais partes ficam translúcidas. A renderização usa blocos compostos para manter seleção individual sem criar milhares de atores gráficos separados.
 
+### Desempenho em computadores básicos
+
+No Windows com até 12 GB de RAM, o aplicativo ativa automaticamente o **modo leve**. Ele usa um cache 3D pré-otimizado, reduz o atlas de aproximadamente 10,4 para 3,7 milhões de triângulos e desliga a suavização de tela mais cara, sem remover estruturas ou informações. O destaque de uma seleção também é feito em uma única camada, sem recalcular os 2.827 itens a cada clique.
+
+Para forçar um perfil ao executar pelo código-fonte, defina `ANATOMIA_3D_QUALIDADE=leve` ou `ANATOMIA_3D_QUALIDADE=detalhada`. O instalador para Windows já inclui o cache leve; para prepará-lo manualmente, execute `anatomia-dados otimizar`.
+
 ## Testes
 
 ```bash
@@ -111,7 +118,7 @@ python -m pip install -e '.[dev]'
 python -m pytest
 ```
 
-Os testes cobrem catálogo, modelos legados, atualização segura, foco de câmera, parser GLB, descompressão Draco, transformações 3D e leitura da TA2.
+Os testes cobrem catálogo, conteúdo didático em português, perfil para PCs com pouca memória, redução geométrica, modelos legados, atualização segura, foco de câmera, parser GLB, descompressão Draco, transformações 3D e leitura da TA2.
 
 ## Organização
 

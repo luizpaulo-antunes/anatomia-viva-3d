@@ -12,6 +12,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,6 +24,7 @@ import pyvista as pv
 
 from .atlas import AtlasModel
 from .catalog import Structure
+from .study_content import build_study_content, portuguese_name
 
 
 EXPORT_COMMIT = "8ca3b7421bcfbe88b85859eb1983d5cf79f21749"
@@ -30,6 +32,8 @@ TERMINOLOGY_COMMIT = "767f14e0a4dfc55aa7c3455685b62339a4faec99"
 ATLAS_VERSION = "2026.09"
 TERMINOLOGY_VERSION = "TA2 / Z-Anatomy 2026.10"
 STRUCTURE_COUNT = 2827
+LIGHTWEIGHT_CELL_LIMIT = 2_000
+LOD_CACHE_SCHEMA = 1
 BASE_EXPORT_URL = (
     "https://raw.githubusercontent.com/nqwrc/3d-anatomy/"
     f"{EXPORT_COMMIT}/public"
@@ -344,6 +348,11 @@ def _material_color(document: dict[str, Any], primitive: dict[str, Any]) -> str:
     return f"#{red:02x}{green:02x}{blue:02x}"
 
 
+def _mesh_color(document: dict[str, Any], mesh_index: int) -> str:
+    primitives = document["meshes"][mesh_index].get("primitives", [])
+    return _material_color(document, primitives[0]) if primitives else "#d1a25b"
+
+
 def _decode_mesh(
     document: dict[str, Any],
     binary: bytes,
@@ -405,6 +414,126 @@ def _polydata(
     return mesh
 
 
+def _simplify_geometry(
+    points: np.ndarray,
+    triangles: np.ndarray,
+    normals: np.ndarray | None,
+    max_cells: int | None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray | None]:
+    """Reduce unusually dense source meshes for integrated graphics.
+
+    Decimation happens before node transforms and is therefore reused by
+    bilateral instances that reference the same GLB mesh.
+    """
+    if max_cells is None or max_cells < 4 or len(triangles) <= max_cells:
+        return points, triangles, normals
+    mesh = _polydata(points, triangles, normals, np.eye(4))
+    reduction = 1.0 - (max_cells / len(triangles))
+    simplified = mesh.decimate(reduction, volume_preservation=True)
+    simplified_triangles = simplified.faces.reshape((-1, 4))[:, 1:].astype(
+        np.int64, copy=False
+    )
+    simplified_normals = simplified.point_data.get("Normals")
+    if simplified_normals is not None:
+        simplified_normals = np.asarray(simplified_normals, dtype=np.float64)
+    return (
+        np.asarray(simplified.points, dtype=np.float64),
+        simplified_triangles,
+        simplified_normals,
+    )
+
+
+def _windows_total_memory() -> int | None:
+    if sys.platform != "win32":
+        return None
+    try:
+        import ctypes
+
+        class MemoryStatus(ctypes.Structure):
+            _fields_ = (
+                ("length", ctypes.c_ulong),
+                ("memory_load", ctypes.c_ulong),
+                ("total_physical", ctypes.c_ulonglong),
+                ("available_physical", ctypes.c_ulonglong),
+                ("total_page_file", ctypes.c_ulonglong),
+                ("available_page_file", ctypes.c_ulonglong),
+                ("total_virtual", ctypes.c_ulonglong),
+                ("available_virtual", ctypes.c_ulonglong),
+                ("available_extended_virtual", ctypes.c_ulonglong),
+            )
+
+        status = MemoryStatus()
+        status.length = ctypes.sizeof(status)
+        if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+            return int(status.total_physical)
+    except (AttributeError, OSError, TypeError, ValueError):
+        pass
+    return None
+
+
+def recommended_cell_limit(
+    platform: str | None = None,
+    total_memory: int | None = None,
+) -> int | None:
+    """Select a safe rendering profile; it can be overridden by an env var."""
+    preference = os.environ.get("ANATOMIA_3D_QUALIDADE", "auto").strip().casefold()
+    if preference in {"leve", "light", "baixo", "low"}:
+        return LIGHTWEIGHT_CELL_LIMIT
+    if preference in {"detalhada", "detailed", "alto", "high"}:
+        return None
+    current_platform = platform or sys.platform
+    if current_platform != "win32":
+        return None
+    memory = total_memory if total_memory is not None else _windows_total_memory()
+    # Integrated GPUs borrow system RAM.  Unknown Windows machines also get the
+    # conservative profile; users can explicitly request detailed geometry.
+    if memory is None or memory <= 12 * 1024**3:
+        return LIGHTWEIGHT_CELL_LIMIT
+    return None
+
+
+def lod_cache_path(data_dir: Path, source_file: SourceFile, cell_limit: int) -> Path:
+    revision = EXPORT_COMMIT[:12]
+    return data_dir / f"lod-v{LOD_CACHE_SCHEMA}-{revision}-{cell_limit}-{source_file.name}.npz"
+
+
+def build_lod_cache(
+    data_dir: Path = BUNDLED_DATA_DIR,
+    cell_limit: int = LIGHTWEIGHT_CELL_LIMIT,
+    progress: ProgressCallback | None = None,
+) -> tuple[Path, ...]:
+    """Precompute the lightweight atlas used by low-memory Windows PCs."""
+    verify_files(data_dir)
+    outputs: list[Path] = []
+    completed = 0
+    mesh_total = sum(
+        len(_read_glb(data_dir / item.name)[0].get("meshes", []))
+        for item in SYSTEM_FILES
+    )
+    for source_file in SYSTEM_FILES:
+        document, binary = _read_glb(data_dir / source_file.name)
+        arrays: dict[str, np.ndarray] = {}
+        for mesh_index in range(len(document.get("meshes", []))):
+            points, triangles, normals, _color = _decode_mesh(
+                document, binary, mesh_index
+            )
+            points, triangles, _normals = _simplify_geometry(
+                points, triangles, normals, cell_limit
+            )
+            arrays[f"p{mesh_index}"] = np.asarray(points, dtype=np.float32)
+            arrays[f"t{mesh_index}"] = np.asarray(triangles, dtype=np.int32)
+            completed += 1
+            if progress:
+                progress(completed, mesh_total, source_file.name)
+        destination = lod_cache_path(data_dir, source_file, cell_limit)
+        partial = destination.with_suffix(destination.suffix + ".part")
+        with partial.open("wb") as output:
+            np.savez_compressed(output, **arrays)
+        partial.replace(destination)
+        outputs.append(destination)
+    return tuple(outputs)
+
+
 GLTF_TO_APP = np.asarray(
     (
         (1.0, 0.0, 0.0, 0.0),
@@ -443,17 +572,6 @@ def _identifier(system_file: str, raw_name: str) -> str:
     return f"za_{digest}"
 
 
-SYSTEM_FUNCTIONS = {
-    "Sistema esquelético": "Sustentação, proteção e alavanca mecânica, conforme a estrutura.",
-    "Articulações, ligamentos e fáscias": "Conecta, estabiliza, reveste ou permite movimento entre estruturas.",
-    "Sistema muscular": "Produz movimento ou estabilização; consulte a descrição de referência quando disponível.",
-    "Sistema cardiovascular": "Participa da circulação ou da condução do sangue.",
-    "Sistema linfático": "Participa da drenagem linfática e da resposta imune.",
-    "Sistema nervoso": "Participa da recepção, integração ou transmissão de sinais nervosos.",
-    "Órgãos e vísceras": "Exerce função específica do órgão ou sistema ao qual pertence.",
-}
-
-
 def _source_license(base_name: str) -> str:
     if base_name in {"Cochlea", "Vestibule"}:
         return "CC BY-NC-SA 4.0 — University of Dundee School of Medicine"
@@ -472,17 +590,11 @@ def _structure(
     base_name, side = _base_name(raw_name)
     term = ta2.get(base_name.casefold(), {})
     lexicon_term = lexicon.get(base_name, {})
-    unidentified = not base_name.strip(" ?x")
-    display_base = (
-        "Estrutura sem identificação anatômica na fonte"
-        if unidentified
-        else base_name
-    )
-    portuguese = (term.get("Portugues") or display_base).strip()
+    portuguese = portuguese_name(base_name, term.get("Portugues"))
     latin = (
         term.get("Latin")
         or lexicon_term.get("la")
-        or ("Nomen non identificatum" if unidentified else base_name)
+        or "Nomen non identificatum"
     ).strip()
     side_suffix = f" — lado {side}" if side else ""
     ta2_id = (term.get("TA2ID") or "não associado automaticamente").strip()
@@ -496,18 +608,28 @@ def _structure(
         if official is False
         else "Não informado"
     )
-    reference = definitions.get(base_name)
-    if reference:
-        description = f"Descrição de referência (em inglês): {reference}"
-    else:
-        description = (
-            "Estrutura individualizada no modelo tridimensional. "
-            "A fonte não fornece uma descrição textual revisada para este item."
-        )
+    # The upstream definitions are kept for coverage/provenance auditing, but
+    # they are English Wikipedia extracts and are not suitable as study copy in
+    # a Portuguese interface.  Every visible item receives a Portuguese,
+    # system-aware summary instead.
+    _has_source_reference = base_name in definitions
+    study = build_study_content(
+        portuguese,
+        base_name,
+        source_file.system or "Outro",
+        definitions.get(base_name, ""),
+    )
     details = (
-        ("Nome original", raw_name),
+        ("Classificação", study.classification),
+        ("Região anatômica", study.region),
+        ("Lateralidade", side.capitalize() if side else "Não se aplica ou não informada"),
         ("Identificador TA2", ta2_id),
         ("Termo oficial no léxico", official_label),
+        ("Síntese em português", "Gerada por regras anatômicas e pela classificação do item"),
+        (
+            "Referência textual na fonte",
+            "Disponível" if _has_source_reference else "Não fornecida",
+        ),
         ("Fonte geométrica", f"Z-Anatomy, exportação {ATLAS_VERSION}"),
         ("Licença desta malha", _source_license(base_name)),
     )
@@ -516,9 +638,10 @@ def _structure(
         f"{portuguese}{side_suffix}",
         f"{latin}{side_suffix}",
         source_file.system or "Outro",
-        description,
-        SYSTEM_FUNCTIONS[source_file.system or "Outro"],
+        study.description,
+        study.function,
         details,
+        study.region,
     )
 
 
@@ -572,6 +695,7 @@ def coverage_report(data_dir: Path) -> dict[str, Any]:
 def load_atlas(
     data_dir: Path | None = None,
     progress: ProgressCallback | None = None,
+    max_cells_per_structure: int | None = None,
 ) -> AtlasModel:
     root = data_dir or installed_data_dir()
     if root is None or not is_installed(root):
@@ -588,26 +712,67 @@ def load_atlas(
         document, binary = _read_glb(root / source_file.name)
         transforms = _world_matrices(document)
         decoded: dict[int, tuple[np.ndarray, np.ndarray, np.ndarray | None, str]] = {}
-        for node_index, node in enumerate(document.get("nodes", [])):
-            if "mesh" not in node:
-                continue
-            mesh_index = int(node["mesh"])
-            if mesh_index not in decoded:
-                decoded[mesh_index] = _decode_mesh(document, binary, mesh_index)
-            points, triangles, normals, color = decoded[mesh_index]
-            raw_name = node.get("extras", {}).get("za_name") or node.get("name", "Estrutura sem nome")
-            structure = _structure(source_file, raw_name, ta2, lexicon, definitions)
-            meshes[structure.id] = _polydata(
-                points,
-                triangles,
-                normals,
-                GLTF_TO_APP @ transforms[node_index],
-            )
-            colors[structure.id] = color
-            structures.append(structure)
-            completed += 1
-            if progress:
-                progress(completed, STRUCTURE_COUNT, raw_name)
+        lod_cache = None
+        if max_cells_per_structure is not None:
+            cache_file = lod_cache_path(root, source_file, max_cells_per_structure)
+            try:
+                lod_cache = np.load(cache_file, allow_pickle=False)
+            except (OSError, ValueError):
+                lod_cache = None
+        try:
+            for node_index, node in enumerate(document.get("nodes", [])):
+                if "mesh" not in node:
+                    continue
+                mesh_index = int(node["mesh"])
+                if mesh_index not in decoded:
+                    point_key = f"p{mesh_index}"
+                    triangle_key = f"t{mesh_index}"
+                    loaded_from_cache = False
+                    if lod_cache is not None:
+                        try:
+                            points = np.asarray(lod_cache[point_key])
+                            triangles = np.asarray(lod_cache[triangle_key])
+                            normals = None
+                            color = _mesh_color(document, mesh_index)
+                            loaded_from_cache = True
+                        except (
+                            EOFError,
+                            KeyError,
+                            OSError,
+                            ValueError,
+                            zipfile.BadZipFile,
+                        ):
+                            loaded_from_cache = False
+                    if not loaded_from_cache:
+                        points, triangles, normals, color = _decode_mesh(
+                            document, binary, mesh_index
+                        )
+                        points, triangles, normals = _simplify_geometry(
+                            points,
+                            triangles,
+                            normals,
+                            max_cells_per_structure,
+                        )
+                    decoded[mesh_index] = points, triangles, normals, color
+                points, triangles, normals, color = decoded[mesh_index]
+                raw_name = node.get("extras", {}).get("za_name") or node.get(
+                    "name", "Estrutura sem nome"
+                )
+                structure = _structure(source_file, raw_name, ta2, lexicon, definitions)
+                meshes[structure.id] = _polydata(
+                    points,
+                    triangles,
+                    normals,
+                    GLTF_TO_APP @ transforms[node_index],
+                )
+                colors[structure.id] = color
+                structures.append(structure)
+                completed += 1
+                if progress:
+                    progress(completed, STRUCTURE_COUNT, raw_name)
+        finally:
+            if lod_cache is not None:
+                lod_cache.close()
 
     if len(meshes) != STRUCTURE_COUNT:
         raise ValueError(
@@ -640,7 +805,10 @@ def _console_progress(completed: int, total: int, name: str) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Gerencia o atlas moderno Z-Anatomy")
-    parser.add_argument("ação", choices=("instalar", "verificar", "status", "relatorio"))
+    parser.add_argument(
+        "ação",
+        choices=("instalar", "verificar", "otimizar", "status", "relatorio"),
+    )
     parser.add_argument("--destino", type=Path, default=BUNDLED_DATA_DIR)
     args = parser.parse_args(argv)
     if args.ação == "instalar":
@@ -649,11 +817,19 @@ def main(argv: list[str] | None = None) -> int:
     elif args.ação == "verificar":
         verify_files(args.destino)
         print(f"Atlas íntegro: {args.destino}")
+    elif args.ação == "otimizar":
+        paths = build_lod_cache(args.destino, progress=_console_progress)
+        print(f"\nAtlas leve gerado em {len(paths)} arquivos: {args.destino}")
     elif args.ação == "relatorio":
         print(json.dumps(coverage_report(args.destino), ensure_ascii=False, indent=2))
     else:
         present = sum((args.destino / item.name).is_file() for item in SOURCE_FILES)
+        lightweight = sum(
+            lod_cache_path(args.destino, item, LIGHTWEIGHT_CELL_LIMIT).is_file()
+            for item in SYSTEM_FILES
+        )
         print(f"Arquivos: {present}/{len(SOURCE_FILES)}")
+        print(f"Cache do modo leve: {lightweight}/{len(SYSTEM_FILES)}")
         print(f"Estruturas esperadas: {STRUCTURE_COUNT}")
         print(f"Instalado: {'sim' if is_installed(args.destino) else 'não'}")
     return 0

@@ -34,9 +34,11 @@ from .zanatomy import (
     ATLAS_VERSION,
     TOTAL_DOWNLOAD_SIZE,
     USER_DATA_DIR,
+    build_lod_cache,
     install as install_zanatomy,
     installed_data_dir as installed_zanatomy_dir,
     load_atlas as load_zanatomy,
+    recommended_cell_limit,
 )
 
 
@@ -117,7 +119,8 @@ class AnatomyWindow(QMainWindow):
         self.setWindowTitle("Anatomia Viva 3D — Atlas de Anatomia")
         self.resize(1400, 850)
 
-        self.atlas = self._load_initial_model()
+        self.render_cell_limit = recommended_cell_limit()
+        self.atlas = self._load_initial_model(self.render_cell_limit)
         self.meshes = self.atlas.meshes
         self.structures = self.atlas.structures
         self.catalog = self.atlas.catalog
@@ -128,6 +131,8 @@ class AnatomyWindow(QMainWindow):
         self.structure_opacities: dict[str, float] = {}
         self.items: dict[str, QTreeWidgetItem] = {}
         self.selected_id: str | None = None
+        self.atlas_actor = None
+        self.selection_actor = None
         self.selection_focus_active = False
         self._tree_updating = False
 
@@ -165,11 +170,14 @@ class AnatomyWindow(QMainWindow):
         )
 
     @classmethod
-    def _load_initial_model(cls) -> AtlasModel:
+    def _load_initial_model(cls, max_cells_per_structure: int | None = None) -> AtlasModel:
         modern = installed_zanatomy_dir()
         if modern is not None:
             try:
-                return load_zanatomy(modern)
+                return load_zanatomy(
+                    modern,
+                    max_cells_per_structure=max_cells_per_structure,
+                )
             except (OSError, RuntimeError, ValueError):
                 pass
         if is_installed():
@@ -210,6 +218,8 @@ class AnatomyWindow(QMainWindow):
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(0, 0, 0, 0)
         self.plotter = QtInteractor(frame)
+        if self.render_cell_limit is not None:
+            self.plotter.render_window.SetMultiSamples(0)
         self.plotter.set_background("#131820", top="#293341")
         layout.addWidget(self.plotter.interactor)
         return frame
@@ -276,7 +286,8 @@ class AnatomyWindow(QMainWindow):
             action.triggered.connect(lambda _checked=False, value=system: self._show_system(value))
             toolbar.addAction(action)
         toolbar.addSeparator()
-        self.model_badge = QLabel(f"  Modelo: {self.model_source}  ")
+        profile = " • modo leve" if self.render_cell_limit is not None else ""
+        self.model_badge = QLabel(f"  Modelo: {self.model_source}{profile}  ")
         toolbar.addWidget(self.model_badge)
 
         data_menu = self.menuBar().addMenu("Dados")
@@ -305,7 +316,7 @@ class AnatomyWindow(QMainWindow):
             identifiers.append(structure.id)
             self.structure_opacities[structure.id] = 1.0
 
-        _actor, mapper = self.plotter.add_composite(
+        self.atlas_actor, mapper = self.plotter.add_composite(
             blocks,
             name="atlas-anatomico",
             color=BONE_COLOR,
@@ -401,6 +412,11 @@ class AnatomyWindow(QMainWindow):
             return
         if structure_id in self.actors:
             self.actors[structure_id].visibility = item.checkState(0) == Qt.CheckState.Checked
+        if (
+            structure_id == self.selected_id
+            and item.checkState(0) == Qt.CheckState.Unchecked
+        ):
+            self._restore_structure_opacities()
         self.plotter.render()
 
     def _on_block_picked(self, block_index: int, _dataset) -> None:
@@ -419,23 +435,29 @@ class AnatomyWindow(QMainWindow):
 
     def _select_structure(self, structure_id: str) -> None:
         if self.selected_id and self.selected_id in self.actors:
-            old = self.catalog[self.selected_id]
-            self.actors[self.selected_id].prop.color = self.colors.get(
-                self.selected_id,
-                SYSTEM_COLORS.get(old.system, MUSCLE_COLOR),
+            previous_item = self.items[self.selected_id]
+            self.actors[self.selected_id].visibility = (
+                previous_item.checkState(0) == Qt.CheckState.Checked
             )
         self.selected_id = structure_id
         actor = self.actors[structure_id]
-        actor.visibility = True
-        actor.prop.color = "#ffd166"
+        # The highlighted copy replaces this one block while focus is active.
+        # This avoids drawing the selected surface twice and keeps the opacity
+        # slider exact.
+        actor.visibility = False
+        self._remove_selection_overlay()
+        if self.atlas_actor is not None:
+            self.atlas_actor.prop.opacity = FOCUS_CONTEXT_OPACITY
+        self.selection_actor = self.plotter.add_mesh(
+            self.meshes[structure_id],
+            name="estrutura-selecionada",
+            color="#ffd166",
+            opacity=self.structure_opacities.get(structure_id, 1.0),
+            smooth_shading=False,
+            pickable=False,
+            render=False,
+        )
         self.selection_focus_active = True
-        for other_id, other_actor in self.actors.items():
-            base_opacity = self.structure_opacities.get(other_id, 1.0)
-            other_actor.prop.opacity = (
-                base_opacity
-                if other_id == structure_id
-                else min(base_opacity, FOCUS_CONTEXT_OPACITY)
-            )
         self._tree_updating = True
         self.items[structure_id].setCheckState(0, Qt.CheckState.Checked)
         self._tree_updating = False
@@ -458,7 +480,7 @@ class AnatomyWindow(QMainWindow):
             f"<p><b>{escape(structure.system)}</b></p><hr>"
             f"<h3>Descrição</h3><p>{escape(structure.description)}</p>"
             f"<h3>Função</h3><p>{escape(structure.function)}</p>{extra}"
-            "<hr><small>Conteúdo didático resumido. Não substitui material médico revisado.</small>"
+            "<hr><small>Conteúdo didático em português. Confirme detalhes clínicos em bibliografia médica revisada.</small>"
         )
 
     def _show_welcome(self) -> None:
@@ -481,6 +503,8 @@ class AnatomyWindow(QMainWindow):
         if self.plotter.iren is not None:
             self.plotter.disable_picking()
         self.plotter.clear()
+        self.atlas_actor = None
+        self.selection_actor = None
         self.atlas = atlas
         self.meshes = atlas.meshes
         self.structures = atlas.structures
@@ -499,7 +523,8 @@ class AnatomyWindow(QMainWindow):
         self._populate_tree()
         self._show_all()
         self._show_welcome()
-        self.model_badge.setText(f"  Modelo: {atlas.label}  ")
+        profile = " • modo leve" if self.render_cell_limit is not None else ""
+        self.model_badge.setText(f"  Modelo: {atlas.label}{profile}  ")
         self.statusBar().showMessage(f"Modelo ativo: {atlas.label}")
 
     def _use_detailed_model(self) -> None:
@@ -538,7 +563,12 @@ class AnatomyWindow(QMainWindow):
                 return
             QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
             try:
-                self._replace_model(load_zanatomy(existing))
+                self._replace_model(
+                    load_zanatomy(
+                        existing,
+                        max_cells_per_structure=self.render_cell_limit,
+                    )
+                )
             except (OSError, RuntimeError, ValueError) as error:
                 QMessageBox.critical(self, "Falha ao carregar o atlas moderno", str(error))
             finally:
@@ -575,10 +605,31 @@ class AnatomyWindow(QMainWindow):
 
         try:
             installed_dir = install_zanatomy(USER_DATA_DIR, progress=report)
+            if self.render_cell_limit is not None:
+                progress.setRange(0, 0)
+                progress.setLabelText("Preparando o atlas para este computador…")
+                QApplication.processEvents()
+
+                def optimize_report(completed: int, total: int, name: str) -> None:
+                    progress.setRange(0, total)
+                    progress.setValue(completed)
+                    progress.setLabelText(f"Otimizando {name} para vídeo integrado…")
+                    QApplication.processEvents()
+                    if progress.wasCanceled():
+                        raise InterruptedError("Otimização cancelada pelo usuário.")
+
+                build_lod_cache(
+                    installed_dir,
+                    self.render_cell_limit,
+                    progress=optimize_report,
+                )
             progress.setRange(0, 0)
             progress.setLabelText("Decodificando as 2.827 estruturas 3D…")
             QApplication.processEvents()
-            atlas = load_zanatomy(installed_dir)
+            atlas = load_zanatomy(
+                installed_dir,
+                max_cells_per_structure=self.render_cell_limit,
+            )
             self._replace_model(atlas)
         except InterruptedError:
             self.statusBar().showMessage("Atualização da biblioteca cancelada")
@@ -615,12 +666,23 @@ class AnatomyWindow(QMainWindow):
         if self.selected_id:
             opacity = value / 100
             self.structure_opacities[self.selected_id] = opacity
-            self.actors[self.selected_id].prop.opacity = opacity
+            if self.selection_actor is not None:
+                self.selection_actor.prop.opacity = opacity
             self.plotter.render()
 
+    def _remove_selection_overlay(self) -> None:
+        if self.selection_actor is not None:
+            self.plotter.remove_actor(self.selection_actor, render=False)
+            self.selection_actor = None
+
     def _restore_structure_opacities(self) -> None:
-        for structure_id, actor in self.actors.items():
-            actor.prop.opacity = self.structure_opacities.get(structure_id, 1.0)
+        if self.atlas_actor is not None:
+            self.atlas_actor.prop.opacity = 1.0
+        self._remove_selection_overlay()
+        if self.selected_id in self.actors and self.selected_id in self.items:
+            self.actors[self.selected_id].visibility = (
+                self.items[self.selected_id].checkState(0) == Qt.CheckState.Checked
+            )
         self.selection_focus_active = False
 
     def _isolate_selected(self) -> None:
@@ -645,10 +707,10 @@ class AnatomyWindow(QMainWindow):
             self.plotter.render()
 
     def _show_all(self) -> None:
+        self._restore_structure_opacities()
         self._tree_updating = True
         for structure_id, actor in self.actors.items():
             actor.visibility = True
-            actor.prop.opacity = 1.0
             self.structure_opacities[structure_id] = 1.0
             self.items[structure_id].setCheckState(0, Qt.CheckState.Checked)
         self._tree_updating = False
