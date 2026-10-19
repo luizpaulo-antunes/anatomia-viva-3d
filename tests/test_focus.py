@@ -9,5 +9,5 @@ def test_camera_focus_bounds_center_and_pad_selected_mesh() -> None:
 
     bounds = camera_focus_bounds(mesh)
 
-    # The longest axis is 4 units, so every side receives 0.72 unit padding.
-    assert bounds == pytest.approx((0.28, 3.72, -2.72, 2.72, 4.28, 6.72))
+    # The selected view is 30% wider than before: 1.536 units of padding.
+    assert bounds == pytest.approx((-0.536, 4.536, -3.536, 3.536, 3.464, 7.536))

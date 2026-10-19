@@ -22,7 +22,7 @@ No Windows, os pacotes ficam em `%LOCALAPPDATA%\AnatomiaViva3D\zanatomy`. Uma no
 
 Depois que o código for enviado ao GitHub, abra **Actions → Build Windows installer → Run workflow**. O ZIP ficará disponível como Artifact.
 
-Ao criar e enviar uma tag como `v0.4.0`, o mesmo workflow cria ou atualiza uma GitHub Release e anexa o ZIP automaticamente.
+Ao criar e enviar uma tag como `v0.4.1`, o mesmo workflow cria ou atualiza uma GitHub Release e anexa o ZIP automaticamente.
 
 ## Build em um computador Windows
 

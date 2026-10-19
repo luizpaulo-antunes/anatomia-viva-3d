@@ -41,6 +41,9 @@ from .zanatomy import (
 
 
 FOCUS_CONTEXT_OPACITY = 0.14
+# Frame an area 30% larger than the previous selection view.  This preserves
+# automatic focus without placing the camera uncomfortably close to small parts.
+FOCUS_PADDING_RATIO = 0.384
 SYSTEM_COLORS = {
     "Sistema esquelético": BONE_COLOR,
     "Articulações, ligamentos e fáscias": "#6ec5bd",
@@ -97,7 +100,7 @@ def camera_focus_bounds(mesh: pv.PolyData) -> tuple[float, float, float, float, 
         bounds[3] - bounds[2],
         bounds[5] - bounds[4],
     )
-    padding = max(max(spans) * 0.18, 0.02)
+    padding = max(max(spans) * FOCUS_PADDING_RATIO, 0.02)
     return (
         bounds[0] - padding,
         bounds[1] + padding,
