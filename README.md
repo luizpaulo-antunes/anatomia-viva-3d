@@ -33,7 +33,7 @@ Extraia o ZIP e execute `AnatomiaViva3D-Setup-<versão>.exe`. Python e a bibliot
 
 ## Cobertura anatômica
 
-A revisão atual usa uma exportação GLB do **Z-Anatomy de 21/09/2026**, fixada pelo commit `8ca3b7421bcf`, e a revisão de terminologia do repositório oficial de **18/10/2026**, commit `767f14e0a4df`. O aplicativo não baixa silenciosamente “a última versão”: cada arquivo possui versão, tamanho e hash conhecidos, tornando a instalação reproduzível.
+A biblioteca atual reúne **2.827 estruturas selecionáveis**, com nomes em português e latim, descrições de referência e informações sobre a origem dos dados. Os arquivos são versionados e verificados antes da instalação para que todos os usuários recebam a mesma biblioteca estável.
 
 | Sistema | Malhas selecionáveis |
 | --- | ---: |
@@ -46,17 +46,7 @@ A revisão atual usa uma exportação GLB do **Z-Anatomy de 21/09/2026**, fixada
 | Órgãos e vísceras | 118 |
 | **Total** | **2.827** |
 
-Na auditoria automatizada desta revisão:
-
-- 2.722 itens, ou **96,3%**, são associados automaticamente a uma entrada da TA2;
-- 2.235 malhas possuem uma descrição de referência na fonte;
-- 56 nomes-base da fonte não têm associação exata automática com a TA2;
-- três rótulos de origem são explicitamente marcados como não identificados, sem inventar um nome anatômico;
-- os 669 itens do sistema muscular incluem músculos e também porções, fáscias, tendões e estruturas relacionadas — não são “669 músculos únicos”.
-
-Anatomia “completa” não é um número universal. A TA2 documenta entidades e relações anatômicas; uma malha 3D pode representar um órgão inteiro, uma parte, uma cabeça muscular ou estruturas bilaterais separadas. Por isso, o projeto considera uma versão completa quando todos os arquivos declarados estão íntegros, toda malha possui identificação e proveniência, as lacunas são mensuradas e nenhuma limitação é escondida. Isso não significa que uma única base aberta contenha toda variação humana ou toda entidade da terminologia.
-
-Consulte [Fontes, atualidade e limites](docs/FONTES_E_COBERTURA.md) e [Dados e licenças de terceiros](THIRD_PARTY_LICENSES.md).
+Consulte [fontes e versões dos dados](docs/FONTES_E_COBERTURA.md) e [licenças de terceiros](THIRD_PARTY_LICENSES.md).
 
 ## Atualização dos dados
 
@@ -71,7 +61,7 @@ anatomia-dados status
 anatomia-dados relatorio
 ```
 
-O relatório informa contagem por sistema, associação TA2, descrições disponíveis, nomes não associados e limitações declaradas.
+O relatório resume a biblioteca instalada e confirma a integridade dos arquivos.
 
 ## Executar pelo código-fonte
 
