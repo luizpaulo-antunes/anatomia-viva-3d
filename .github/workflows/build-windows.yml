@@ -1,0 +1,67 @@
+name: Build Windows installer
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows-installer:
+    runs-on: windows-2022
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,windows]"
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer and ZIP
+        shell: pwsh
+        run: ./packaging/windows/build.ps1 -SkipDependencyInstall
+
+      - name: Upload ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AnatomiaViva3D-Windows
+          path: release/AnatomiaViva3D-Windows-*.zip
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Upload anatomy content artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AnatomiaViva3D-Content
+          path: |
+            release/AnatomiaViva3D-Content-*.zip
+            release/anatomia-content.json
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Publish tagged build in GitHub Releases
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view $env:GITHUB_REF_NAME 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $env:GITHUB_REF_NAME --generate-notes --title $env:GITHUB_REF_NAME
+          }
+          gh release upload $env:GITHUB_REF_NAME release/AnatomiaViva3D-Windows-*.zip release/AnatomiaViva3D-Content-*.zip release/anatomia-content.json --clobber
