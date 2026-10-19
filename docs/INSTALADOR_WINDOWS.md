@@ -1,6 +1,8 @@
 # Instalador do Windows
 
-O pacote final é `AnatomiaViva3D-Windows-<versão>.zip`. Dentro dele há um único instalador `AnatomiaViva3D-Setup-<versão>.exe`.
+O pacote final é publicado como `AnatomiaViva3D-Windows.zip`, com uma cópia versionada `AnatomiaViva3D-Windows-<versão>.zip`. Dentro dele há um único instalador `AnatomiaViva3D-Setup-<versão>.exe`.
+
+Download permanente da versão mais recente: [AnatomiaViva3D-Windows.zip](https://github.com/luizpaulo-antunes/anatomia-viva-3d/releases/latest/download/AnatomiaViva3D-Windows.zip).
 
 O Setup instala por usuário, sem exigir privilégios de administrador, cria atalhos e registra um desinstalador. Python, PySide6, PyVista e VTK são incluídos pelo PyInstaller. O cache anatômico otimizado com as 443 estruturas atuais também é incluído, portanto o atlas detalhado funciona offline sem baixar os STL brutos.
 
@@ -41,6 +43,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 O script instala as dependências, executa os testes, obtém e otimiza as malhas, gera o aplicativo autocontido, compila o Setup e cria em `release\`:
 
 - `AnatomiaViva3D-Windows-<versão>.zip`;
+- `AnatomiaViva3D-Windows.zip`, usado pelo link permanente do README;
 - `AnatomiaViva3D-Content-<versão>.zip`;
 - `anatomia-content.json`.
 

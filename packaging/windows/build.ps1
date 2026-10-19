@@ -44,10 +44,13 @@ if (-not $Iscc) {
 
 $Setup = Join-Path $ProjectRoot "release\AnatomiaViva3D-Setup-$Version.exe"
 $Zip = Join-Path $ProjectRoot "release\AnatomiaViva3D-Windows-$Version.zip"
+$StableZip = Join-Path $ProjectRoot "release\AnatomiaViva3D-Windows.zip"
 if (-not (Test-Path $Setup)) {
     throw "O instalador esperado não foi criado: $Setup"
 }
 Compress-Archive -LiteralPath $Setup -DestinationPath $Zip -CompressionLevel Optimal -Force
+Copy-Item -LiteralPath $Zip -Destination $StableZip -Force
 
 Write-Host ""
 Write-Host "Pacote Windows criado: $Zip"
+Write-Host "Link estável criado: $StableZip"

@@ -3,7 +3,7 @@
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Licença MIT](https://img.shields.io/badge/código-MIT-2ea44f)](LICENSE)
 [![Status](https://img.shields.io/badge/status-em%20desenvolvimento-f59e0b)](#próximos-passos)
-[![Windows](https://img.shields.io/badge/Windows-instalador%20planejado-0078D4?logo=windows)](docs/INSTALADOR_WINDOWS.md)
+[![Windows](https://img.shields.io/badge/Windows-instalador-0078D4?logo=windows)](https://github.com/luizpaulo-antunes/anatomia-viva-3d/releases/latest/download/AnatomiaViva3D-Windows.zip)
 
 Um atlas anatômico 3D, local e interativo, criado para tornar o estudo de anatomia mais visual, exploratório e acessível.
 
@@ -11,6 +11,12 @@ O **Anatomia Viva 3D** permite navegar pelo corpo humano, pesquisar estruturas, 
 
 > [!IMPORTANT]
 > Este é um projeto educacional em desenvolvimento. A geometria e os textos são materiais didáticos resumidos e não devem ser usados para diagnóstico, planejamento clínico ou como única fonte de informação médica.
+
+## Download para Windows
+
+[**Baixar o instalador do Anatomia Viva 3D (.zip)**](https://github.com/luizpaulo-antunes/anatomia-viva-3d/releases/latest/download/AnatomiaViva3D-Windows.zip)
+
+Extraia o ZIP e execute `AnatomiaViva3D-Setup-<versão>.exe`. O pacote inclui o aplicativo e a biblioteca anatômica atual; não é necessário instalar Python.
 
 ## Visão do projeto
 
@@ -51,9 +57,11 @@ Neste projeto, “cobertura muscular completa” significa toda a cobertura clas
 O projeto já possui um fluxo automatizado para gerar:
 
 ```text
-AnatomiaViva3D-Windows-<versão>.zip
+AnatomiaViva3D-Windows.zip
 └── AnatomiaViva3D-Setup-<versão>.exe
 ```
+
+Cada Release também preserva uma cópia identificada, como `AnatomiaViva3D-Windows-0.3.0.zip`. O link de download acima sempre aponta para a versão estável mais recente.
 
 O instalador inclui Python, a interface, o mecanismo 3D e as 443 estruturas otimizadas. Assim, o usuário pode estudar offline sem instalar dependências ou baixar as malhas brutas.
 
