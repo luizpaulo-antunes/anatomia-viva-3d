@@ -19,10 +19,11 @@ Extraia o ZIP e execute `AnatomiaViva3D-Setup-<versão>.exe`. Python e a bibliot
 ## O que há no aplicativo
 
 - rotação, zoom, deslocamento e vistas anatômicas predefinidas;
-- **2.827 malhas selecionáveis**, renderizadas de forma otimizada em um único conjunto composto;
+- **2.847 malhas selecionáveis** entre os perfis, renderizadas de forma otimizada em um único conjunto composto;
+- seletor de perfil reprodutivo **Masculino, Feminino ou Ambos**, sem perder a posição da câmera;
 - ossos, articulações/ligamentos/fáscias, músculos, cardiovascular, linfático, nervoso e vísceras;
-- seleção pelo modelo ou pela árvore, com foco automático na estrutura;
-- contexto translúcido para revelar estruturas encobertas;
+- seleção pelo modelo ou pela árvore, com enquadramento anatômico regional estável;
+- estrutura selecionada sólida e contornada, com somente os ossos próximos como referência anatômica discreta;
 - pesquisa por nome em português, termo latino, sistema e região;
 - isolamento, ocultação, opacidade e filtros por sistema;
 - nomes em português associados à Terminologia Anatomica 2 quando disponíveis;
@@ -34,18 +35,20 @@ Extraia o ZIP e execute `AnatomiaViva3D-Setup-<versão>.exe`. Python e a bibliot
 
 ## Cobertura anatômica
 
-A biblioteca atual reúne **2.827 estruturas selecionáveis**, com nomes em português e latim, sínteses didáticas em português e informações sobre a origem dos dados. As definições em inglês da fonte são preservadas somente para auditoria de cobertura e não são mostradas como conteúdo de estudo. Os arquivos são versionados e verificados antes da instalação para que todos os usuários recebam a mesma biblioteca estável.
+A biblioteca atual reúne **2.847 estruturas selecionáveis entre os perfis**, com nomes em português e latim, sínteses didáticas em português e informações sobre a origem dos dados. O perfil masculino mantém as 2.827 malhas do Z-Anatomy; o feminino oculta as 18 estruturas reprodutivas masculinas e acrescenta 20 referências femininas do Human Reference Atlas. As definições em inglês das fontes não são mostradas como conteúdo de estudo.
+
+O seletor **Perfil reprodutivo** fica na barra superior. Estruturas comuns permanecem no lugar e somente a anatomia específica é alternada; **Ambos (comparar)** exibe os dois conjuntos. A referência HRA inclui útero e colo, ovários, tubas, vagina, suportes ligamentares e vasos uterinos, todos com descrição e função em português. Trata-se de um complemento reprodutivo/pélvico alinhado ao corpo principal — não de um modelo feminino completo de todas as diferenças sexuais do corpo.
 
 | Sistema | Malhas selecionáveis |
 | --- | ---: |
 | Esquelético | 277 |
-| Articulações, ligamentos e fáscias | 349 |
+| Articulações, ligamentos e fáscias | 358 |
 | Muscular | 669 |
-| Cardiovascular | 676 |
+| Cardiovascular | 680 |
 | Linfático | 158 |
 | Nervoso | 580 |
-| Órgãos e vísceras | 118 |
-| **Total** | **2.827** |
+| Órgãos e vísceras | 125 |
+| **Total entre os perfis** | **2.847** |
 
 Consulte [fontes e versões dos dados](docs/FONTES_E_COBERTURA.md) e [licenças de terceiros](THIRD_PARTY_LICENSES.md).
 
@@ -97,17 +100,19 @@ O primeiro comando de dados baixa a revisão fixada para `data/zanatomy`. Os arq
 | Ação | Controle |
 | --- | --- |
 | Girar | arrastar com o botão esquerdo |
-| Zoom | roda do mouse |
+| Zoom | roda do mouse, teclas **+ / −** ou botões da barra superior |
 | Deslocar câmera | arrastar com o botão direito |
 | Selecionar | clicar no modelo ou na lista |
 | Mostrar/ocultar | caixa ao lado da estrutura |
+| Trocar anatomia reprodutiva | seletor **Perfil reprodutivo** na barra superior |
+| Reenquadrar seleção | tecla **F** ou botão **Reenquadrar** |
 | Restaurar contexto | **Exibir todas as estruturas** |
 
-Ao selecionar uma estrutura, a câmera a enquadra e as demais partes ficam translúcidas. A renderização usa blocos compostos para manter seleção individual sem criar milhares de atores gráficos separados.
+Ao selecionar uma estrutura, a câmera enquadra uma região coerente — por exemplo, a cabeça ao selecionar um osso da face — e mantém um campo de visão mínimo para evitar aproximações exageradas em peças pequenas. A estrutura fica sólida, suavizada e com contorno claro. Para evitar o efeito confuso de muitas transparências sobrepostas, somente os ossos próximos permanecem como referência discreta; **Isolar** remove também esse contexto. Ao trocar entre Ossos, Músculos, Vasos, Nervos ou Órgãos, o aplicativo preserva a câmera e mostra o novo sistema somente no volume 3D atualmente visível. O botão **Exibir todas as estruturas** retorna ao corpo inteiro.
 
 ### Desempenho em computadores básicos
 
-No Windows com até 12 GB de RAM, o aplicativo ativa automaticamente o **modo leve**. Ele usa um cache 3D pré-otimizado, reduz o atlas de aproximadamente 10,4 para 3,7 milhões de triângulos e desliga a suavização de tela mais cara, sem remover estruturas ou informações. O destaque de uma seleção também é feito em uma única camada, sem recalcular os 2.827 itens a cada clique.
+No Windows com até 12 GB de RAM, o aplicativo ativa automaticamente o **modo leve**. Ele usa um cache 3D pré-otimizado, reduz o atlas de aproximadamente 10,4 para 3,7 milhões de triângulos e desliga a suavização de tela mais cara, sem remover estruturas ou informações.
 
 Para forçar um perfil ao executar pelo código-fonte, defina `ANATOMIA_3D_QUALIDADE=leve` ou `ANATOMIA_3D_QUALIDADE=detalhada`. O instalador para Windows já inclui o cache leve; para prepará-lo manualmente, execute `anatomia-dados otimizar`.
 
@@ -118,7 +123,7 @@ python -m pip install -e '.[dev]'
 python -m pytest
 ```
 
-Os testes cobrem catálogo, conteúdo didático em português, perfil para PCs com pouca memória, redução geométrica, modelos legados, atualização segura, foco de câmera, parser GLB, descompressão Draco, transformações 3D e leitura da TA2.
+Os testes cobrem catálogo, perfis reprodutivos masculino/feminino, referência HRA, conteúdo didático em português, perfil para PCs com pouca memória, redução geométrica, modelos legados, atualização segura, foco de câmera, parser GLB, descompressão Draco, transformações 3D e leitura da TA2.
 
 ## Organização
 
@@ -126,6 +131,7 @@ Os testes cobrem catálogo, conteúdo didático em português, perfil para PCs c
 src/anatomia_app/
 ├── atlas.py             # contrato de um atlas versionado
 ├── zanatomy.py          # download, hashes, TA2, GLB/Draco e cobertura
+├── female_reference.py  # complemento reprodutivo feminino HRA
 ├── main_window.py       # interface, seleção e renderização composta
 ├── catalog.py           # catálogo didático e fallback legado
 ├── bodyparts3d.py       # importador legado, não usado como padrão

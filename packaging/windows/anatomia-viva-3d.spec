@@ -21,6 +21,10 @@ if (
 
 datas = [
     (str(atlas_root), "data/zanatomy"),
+    (
+        str(source_root / "anatomia_app" / "data" / "female_reproductive_v1_5.npz"),
+        "anatomia_app/data",
+    ),
     (str(project_root / "README.md"), "."),
     (str(project_root / "LICENSE"), "."),
     (str(project_root / "THIRD_PARTY_LICENSES.md"), "."),

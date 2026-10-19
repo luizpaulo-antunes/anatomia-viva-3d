@@ -15,6 +15,7 @@ class Structure:
     function: str
     details: tuple[tuple[str, str], ...] = ()
     region: str = ""
+    anatomical_profile: str = "comum"
 
     @property
     def search_text(self) -> str:

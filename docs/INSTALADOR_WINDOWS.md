@@ -4,7 +4,7 @@ O pacote final é publicado como `AnatomiaViva3D-Windows.zip`, com uma cópia ve
 
 Download permanente da versão mais recente: [AnatomiaViva3D-Windows.zip](https://github.com/luizpaulo-antunes/anatomia-viva-3d/releases/latest/download/AnatomiaViva3D-Windows.zip).
 
-O Setup instala por usuário, sem exigir privilégios de administrador, cria atalhos e registra um desinstalador. Python, PySide6, PyVista, VTK e DracoPy são incluídos pelo PyInstaller. Os sete sistemas do atlas Z-Anatomy, com 2.827 malhas, também são incluídos; o uso normal funciona offline.
+O Setup instala por usuário, sem exigir privilégios de administrador, cria atalhos e registra um desinstalador. Python, PySide6, PyVista, VTK e DracoPy são incluídos pelo PyInstaller. Os sete sistemas do atlas Z-Anatomy, com 2.827 malhas, e o complemento reprodutivo feminino HRA, com 20 grupos, também são incluídos; o uso normal funciona offline.
 
 ## Atualizações após a instalação
 
@@ -22,7 +22,7 @@ No Windows, os pacotes ficam em `%LOCALAPPDATA%\AnatomiaViva3D\zanatomy`. Uma no
 
 Depois que o código for enviado ao GitHub, abra **Actions → Build Windows installer → Run workflow**. O ZIP ficará disponível como Artifact.
 
-Ao criar e enviar uma tag como `v0.4.1`, o mesmo workflow cria ou atualiza uma GitHub Release e anexa o ZIP automaticamente.
+Ao criar e enviar uma tag como `v0.4.3`, o mesmo workflow cria ou atualiza uma GitHub Release e anexa o ZIP automaticamente.
 
 ## Build em um computador Windows
 

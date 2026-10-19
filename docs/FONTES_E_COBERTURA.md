@@ -26,7 +26,9 @@ A TA2 é o padrão internacional da IFAA/FIPAT para anatomia humana adulta. Foi 
 
 ### NIH/HuBMAP Human Reference Atlas
 
-O HRA é uma fonte complementar importante para órgãos de referência, ontologias e validação por especialistas. Seus órgãos masculinos e femininos não são sobrepostos automaticamente ao Z-Anatomy porque foram produzidos em outros espaços de coordenadas e para outras finalidades. Misturá-los sem registro anatômico criaria uma aparência convincente, porém cientificamente incorreta. A arquitetura `AtlasModel` permite acrescentá-los futuramente como atlas selecionável e versionado.
+O HRA complementa o perfil feminino com 20 grupos reprodutivos e pélvicos extraídos do objeto `united-female` v1.5: útero e colo, ovários, tubas uterinas, vagina, suportes ligamentares e vasos uterinos. A extração fixa o SHA-256 da fonte e aplica somente escala uniforme, rotação de eixos e translação calculadas pelos envelopes da pelve óssea dos dois atlas. As proporções dos órgãos não são deformadas. Fonte, revisão, sexo e licença CC BY 4.0 aparecem em cada item.
+
+O perfil feminino é explicitamente um **complemento reprodutivo**, não um corpo feminino completo. As estruturas comuns continuam vindo do Z-Anatomy; o seletor impede a sobreposição involuntária das anatomias reprodutivas masculina e feminina, exceto no modo comparativo solicitado pelo usuário.
 
 ### BodyParts3D
 
@@ -52,11 +54,11 @@ anatomia-dados relatorio
 
 ## Limites desta revisão
 
-- o modelo principal representa anatomia masculina;
+- o modelo principal de corpo inteiro representa anatomia masculina; o perfil feminino complementa a região reprodutiva/pélvica;
 - não representa variações anatômicas populacionais e individuais;
 - “estrutura selecionável” não equivale a “órgão” ou “músculo único”;
 - descrições da fonte estão majoritariamente em inglês, são usadas apenas na auditoria de cobertura e não constituem revisão clínica;
 - parte da geometria possui origem histórica anterior à revisão do repositório;
-- modelos de fontes diferentes não são combinados sem transformação e validação espacial.
+- o complemento HRA usa registro pélvico educacional e não equivale a registro clínico ou individual.
 
 O objetivo não é afirmar uma perfeição inexistente. É oferecer o atlas aberto mais amplo e recente compatível com o aplicativo, tornar cada decisão auditável e permitir substituir ou complementar fontes sem reescrever a interface.

@@ -580,6 +580,24 @@ def _source_license(base_name: str) -> str:
     return "CC BY-SA 4.0 — Z-Anatomy (com atribuições indicadas em License.txt)"
 
 
+MALE_REPRODUCTIVE_NAMES = frozenset(
+    {
+        "Corpus cavernosum of penis",
+        "Corpus spongiosum of penis",
+        "Deep artery of penis",
+        "Deep dorsal vein of penis",
+        "Dorsal artery of penis",
+        "Ductus deferens",
+        "Epididymis",
+        "Glans penis",
+        "Prostate",
+        "Seminal gland",
+        "Superficial dorsal veins of penis",
+        "Testis",
+    }
+)
+
+
 def _structure(
     source_file: SourceFile,
     raw_name: str,
@@ -642,6 +660,7 @@ def _structure(
         study.function,
         details,
         study.region,
+        "masculino" if base_name in MALE_REPRODUCTIVE_NAMES else "comum",
     )
 
 

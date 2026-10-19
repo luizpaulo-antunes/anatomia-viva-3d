@@ -58,10 +58,13 @@ Atribuição: “BodyParts3D, © The Database Center for Life Science licensed u
 
 ## NIH/HuBMAP Human Reference Atlas
 
-O HRA é documentado como fonte complementar e ainda não é empacotado nesta versão.
+O aplicativo inclui um subconjunto reprodutivo feminino derivado do objeto de referência `united-female` v1.5. O arquivo original não é redistribuído integralmente: o processo reproduzível em `tools/extract_female_reference.py` extrai somente 20 grupos selecionáveis, mantém as proporções da fonte e aplica uma transformação uniforme de registro pélvico ao atlas principal.
 
 - Portal: https://humanatlas.io/3d-reference-library
+- Objeto usado: https://cdn.humanatlas.io/digital-objects/ref-organ/united-female/v1.5/assets/3d-vh-f-united.glb
+- SHA-256 do GLB original: `472567a56896b9b7890508da6501fbf858e56aaa30745365f7a71ade782b529c`
+- Revisão: `united-female` v1.5, Visible Human Female
 - Repositório de releases históricas: https://github.com/hubmapconsortium/ccf-releases
 - Licença dos objetos de referência: CC BY 4.0, conforme os metadados do HRA
 
-Antes de integrar qualquer órgão do HRA, a versão futura deverá preservar o identificador da entidade, sexo do modelo, revisão, autoria, licença e espaço de coordenadas, sem sobreposição não validada com outro atlas.
+Cada estrutura derivada informa no aplicativo a fonte, a revisão, o perfil feminino e a licença. O alinhamento serve à comparação educacional e não deve ser interpretado como registro clínico individual.
