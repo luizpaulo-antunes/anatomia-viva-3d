@@ -5,18 +5,17 @@ from PyInstaller.utils.hooks import collect_all
 
 project_root = Path(SPECPATH).parents[1]
 source_root = project_root / "src"
-cache_root = project_root / "data" / "bodyparts3d" / "cache"
+atlas_root = project_root / "data" / "zanatomy"
 
-cache_files = list(cache_root.glob("*.vtp"))
-if len(cache_files) < 443:
+required_files = list(atlas_root.glob("*.glb"))
+if len(required_files) != 7 or not (atlas_root / "TA2.csv").is_file():
     raise SystemExit(
-        "O pacote completo exige 443 arquivos VTP. Execute "
-        "'anatomia-dados instalar' e 'anatomia-dados otimizar' antes do build."
+        "O pacote completo exige os sete sistemas Z-Anatomy. Execute "
+        "'anatomia-dados instalar' antes do build."
     )
 
 datas = [
-    (str(cache_root), "data/bodyparts3d/cache"),
-    (str(project_root / "data" / "bodyparts3d" / "content.json"), "data/bodyparts3d"),
+    (str(atlas_root), "data/zanatomy"),
     (str(project_root / "README.md"), "."),
     (str(project_root / "LICENSE"), "."),
     (str(project_root / "THIRD_PARTY_LICENSES.md"), "."),
@@ -24,6 +23,7 @@ datas = [
 binaries = []
 hiddenimports = []
 
+hiddenimports.append("DracoPy")
 for package in ("pyvista", "pyvistaqt", "vtkmodules"):
     package_datas, package_binaries, package_hiddenimports = collect_all(package)
     datas += package_datas

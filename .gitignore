@@ -10,3 +10,5 @@ release/
 data/bodyparts3d/*
 !data/bodyparts3d/README.md
 !data/bodyparts3d/content.json
+data/zanatomy/*
+!data/zanatomy/README.md

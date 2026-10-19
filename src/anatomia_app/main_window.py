@@ -26,21 +26,67 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .catalog import CATALOG, STRUCTURES, Structure
+from .atlas import AtlasModel
+from .catalog import STRUCTURES, Structure
 from .bodyparts3d import current_attribution, is_installed, load_meshes, model_label
-from .content_updates import (
-    ContentUpdateError,
-    UpdateCancelled,
-    content_version,
-    download_content,
-    fetch_manifest,
-    install_content_archive,
-    update_available,
-)
 from .geometry import BONE_COLOR, MUSCLE_COLOR, build_demo_meshes
+from .zanatomy import (
+    ATLAS_VERSION,
+    TOTAL_DOWNLOAD_SIZE,
+    USER_DATA_DIR,
+    install as install_zanatomy,
+    installed_data_dir as installed_zanatomy_dir,
+    load_atlas as load_zanatomy,
+)
 
 
 FOCUS_CONTEXT_OPACITY = 0.14
+SYSTEM_COLORS = {
+    "Sistema esquelético": BONE_COLOR,
+    "Articulações, ligamentos e fáscias": "#6ec5bd",
+    "Sistema muscular": MUSCLE_COLOR,
+    "Sistema cardiovascular": "#c74646",
+    "Sistema linfático": "#6cad72",
+    "Sistema nervoso": "#e6c85c",
+    "Órgãos e vísceras": "#b57aa6",
+}
+
+
+class StructureActor:
+    """Small compatibility facade over one VTK composite block."""
+
+    def __init__(self, attributes) -> None:
+        self.attributes = attributes
+
+    @property
+    def prop(self) -> StructureActor:
+        return self
+
+    @property
+    def visibility(self) -> bool:
+        value = self.attributes.visible
+        return True if value is None else bool(value)
+
+    @visibility.setter
+    def visibility(self, value: bool) -> None:
+        self.attributes.visible = value
+
+    @property
+    def color(self):
+        return self.attributes.color
+
+    @color.setter
+    def color(self, value) -> None:
+        self.attributes.color = value
+
+    @property
+    def opacity(self) -> float:
+        value = self.attributes.opacity
+        return 1.0 if value is None else float(value)
+
+    @opacity.setter
+    def opacity(self, value: float) -> None:
+        self.attributes.opacity = value
 
 
 def camera_focus_bounds(mesh: pv.PolyData) -> tuple[float, float, float, float, float, float]:
@@ -68,9 +114,14 @@ class AnatomyWindow(QMainWindow):
         self.setWindowTitle("Anatomia Viva 3D — Atlas de Anatomia")
         self.resize(1400, 850)
 
-        self.meshes, self.model_source = self._load_initial_model()
-        self.actors: dict[str, pv.Actor] = {}
-        self.actor_ids: dict[int, str] = {}
+        self.atlas = self._load_initial_model()
+        self.meshes = self.atlas.meshes
+        self.structures = self.atlas.structures
+        self.catalog = self.atlas.catalog
+        self.model_source = self.atlas.label
+        self.colors = self.atlas.colors
+        self.actors: dict[str, StructureActor] = {}
+        self.block_ids: dict[int, str] = {}
         self.structure_opacities: dict[str, float] = {}
         self.items: dict[str, QTreeWidgetItem] = {}
         self.selected_id: str | None = None
@@ -91,13 +142,39 @@ class AnatomyWindow(QMainWindow):
         self.statusBar().showMessage("Clique em uma estrutura para estudá-la")
 
     @staticmethod
-    def _load_initial_model() -> tuple[dict[str, pv.PolyData], str]:
-        if is_installed():
+    def _legacy_atlas(meshes: dict[str, pv.PolyData], label: str) -> AtlasModel:
+        structures = tuple(item for item in STRUCTURES if item.id in meshes)
+        is_demo = label == "Demonstração"
+        return AtlasModel(
+            meshes=meshes,
+            structures=structures,
+            label=label,
+            version="demo" if is_demo else label.removeprefix("BodyParts3D "),
+            source="modelo procedural interno" if is_demo else "BodyParts3D",
+            license_name="MIT (geometria procedural)" if is_demo else "Consulte THIRD_PARTY_LICENSES.md",
+            attribution="Anatomia Viva 3D" if is_demo else current_attribution(),
+            revision="incluída no aplicativo",
+            coverage_note=(
+                "Representação simplificada para demonstração; não é um atlas anatômico completo."
+                if is_demo
+                else "Modelo legado mantido apenas para compatibilidade."
+            ),
+        )
+
+    @classmethod
+    def _load_initial_model(cls) -> AtlasModel:
+        modern = installed_zanatomy_dir()
+        if modern is not None:
             try:
-                return load_meshes(), model_label()
+                return load_zanatomy(modern)
             except (OSError, RuntimeError, ValueError):
                 pass
-        return build_demo_meshes(), "Demonstração"
+        if is_installed():
+            try:
+                return cls._legacy_atlas(load_meshes(), model_label())
+            except (OSError, RuntimeError, ValueError):
+                pass
+        return cls._legacy_atlas(build_demo_meshes(), "Demonstração")
 
     def _build_navigation_panel(self) -> QWidget:
         panel = QWidget()
@@ -187,6 +264,9 @@ class AnatomyWindow(QMainWindow):
             ("Tudo", None),
             ("Ossos", "Sistema esquelético"),
             ("Músculos", "Sistema muscular"),
+            ("Vasos", "Sistema cardiovascular"),
+            ("Nervos", "Sistema nervoso"),
+            ("Órgãos", "Órgãos e vísceras"),
         )
         for label, system in layers:
             action = QAction(label, self)
@@ -197,51 +277,56 @@ class AnatomyWindow(QMainWindow):
         toolbar.addWidget(self.model_badge)
 
         data_menu = self.menuBar().addMenu("Dados")
-        update_content = QAction("Atualizar biblioteca anatômica…", self)
+        update_content = QAction("Instalar/atualizar atlas moderno…", self)
         update_content.triggered.connect(self._update_anatomy_content)
         data_menu.addAction(update_content)
         data_menu.addSeparator()
-        detailed = QAction("Usar BodyParts3D detalhado", self)
+        detailed = QAction("Usar modelo legado BodyParts3D", self)
         detailed.triggered.connect(self._use_detailed_model)
         data_menu.addAction(detailed)
         demo = QAction("Usar modelo de demonstração", self)
         demo.triggered.connect(self._use_demo_model)
         data_menu.addAction(demo)
         data_menu.addSeparator()
-        credits = QAction("Créditos e licença do modelo", self)
+        credits = QAction("Fonte, cobertura e licenças", self)
         credits.triggered.connect(self._show_model_credits)
         data_menu.addAction(credits)
 
     def _populate_scene(self) -> None:
-        for structure in STRUCTURES:
+        blocks = pv.MultiBlock()
+        identifiers: list[str] = []
+        for structure in self.structures:
             if structure.id not in self.meshes:
                 continue
-            color = BONE_COLOR if structure.system == "Sistema esquelético" else MUSCLE_COLOR
-            actor = self.plotter.add_mesh(
-                self.meshes[structure.id],
-                name=structure.id,
-                color=color,
-                smooth_shading=True,
-                pickable=True,
-                specular=0.15,
-                specular_power=12,
-                render=False,
-            )
-            self.actors[structure.id] = actor
-            self.actor_ids[id(actor)] = structure.id
+            blocks.append(self.meshes[structure.id], structure.id)
+            identifiers.append(structure.id)
             self.structure_opacities[structure.id] = 1.0
+
+        _actor, mapper = self.plotter.add_composite(
+            blocks,
+            name="atlas-anatomico",
+            color=BONE_COLOR,
+            smooth_shading=False,
+            pickable=True,
+            specular=0.15,
+            specular_power=12,
+            render=False,
+        )
+        for block_index, structure_id in enumerate(identifiers, start=1):
+            attributes = mapper.block_attr[block_index]
+            structure = self.catalog[structure_id]
+            attributes.color = self.colors.get(
+                structure_id,
+                SYSTEM_COLORS.get(structure.system, MUSCLE_COLOR),
+            )
+            self.actors[structure_id] = StructureActor(attributes)
+            self.block_ids[block_index] = structure_id
 
         self.plotter.add_axes(line_width=2, labels_off=True)
         # Some CI/headless platforms can construct the scene but provide no
         # OpenGL interactor. The desktop application always has one.
         if self.plotter.iren is not None:
-            self.plotter.enable_mesh_picking(
-                callback=self._on_actor_picked,
-                use_actor=True,
-                left_clicking=True,
-                show=False,
-                show_message=False,
-            )
+            self.plotter.enable_block_picking(callback=self._on_block_picked, side="left")
         self.plotter.render()
         self._view_front()
 
@@ -249,7 +334,7 @@ class AnatomyWindow(QMainWindow):
         groups: dict[str, QTreeWidgetItem] = {}
         regions: dict[tuple[str, str], QTreeWidgetItem] = {}
         self._tree_updating = True
-        for structure in STRUCTURES:
+        for structure in self.structures:
             if structure.id not in self.meshes:
                 continue
             parent = groups.get(structure.system)
@@ -279,7 +364,7 @@ class AnatomyWindow(QMainWindow):
         def filter_item(item: QTreeWidgetItem) -> bool:
             structure_id = item.data(0, Qt.ItemDataRole.UserRole)
             if structure_id:
-                visible = not query or query in CATALOG[structure_id].search_text
+                visible = not query or query in self.catalog[structure_id].search_text
             else:
                 child_visibility = [
                     filter_item(item.child(index)) for index in range(item.childCount())
@@ -315,8 +400,8 @@ class AnatomyWindow(QMainWindow):
             self.actors[structure_id].visibility = item.checkState(0) == Qt.CheckState.Checked
         self.plotter.render()
 
-    def _on_actor_picked(self, actor: pv.Actor) -> None:
-        structure_id = self.actor_ids.get(id(actor))
+    def _on_block_picked(self, block_index: int, _dataset) -> None:
+        structure_id = self.block_ids.get(block_index)
         if structure_id:
             item = self.items[structure_id]
             parent = item.parent()
@@ -331,9 +416,10 @@ class AnatomyWindow(QMainWindow):
 
     def _select_structure(self, structure_id: str) -> None:
         if self.selected_id and self.selected_id in self.actors:
-            old = CATALOG[self.selected_id]
-            self.actors[self.selected_id].prop.color = (
-                BONE_COLOR if old.system == "Sistema esquelético" else MUSCLE_COLOR
+            old = self.catalog[self.selected_id]
+            self.actors[self.selected_id].prop.color = self.colors.get(
+                self.selected_id,
+                SYSTEM_COLORS.get(old.system, MUSCLE_COLOR),
             )
         self.selected_id = structure_id
         actor = self.actors[structure_id]
@@ -354,8 +440,8 @@ class AnatomyWindow(QMainWindow):
         self.opacity.blockSignals(True)
         self.opacity.setValue(round(self.structure_opacities.get(structure_id, 1.0) * 100))
         self.opacity.blockSignals(False)
-        self._show_details(CATALOG[structure_id])
-        self.statusBar().showMessage(f"Selecionado: {CATALOG[structure_id].name}")
+        self._show_details(self.catalog[structure_id])
+        self.statusBar().showMessage(f"Selecionado: {self.catalog[structure_id].name}")
         self.plotter.reset_camera(bounds=camera_focus_bounds(self.meshes[structure_id]), render=False)
         self.plotter.render()
 
@@ -373,33 +459,33 @@ class AnatomyWindow(QMainWindow):
         )
 
     def _show_welcome(self) -> None:
-        muscle_count = sum(
-            CATALOG[identifier].system == "Sistema muscular" for identifier in self.actors
-        )
-        skeletal_count = sum(
-            CATALOG[identifier].system == "Sistema esquelético" for identifier in self.actors
-        )
-        source_note = (
-            f"<p><b>Modelo:</b> BodyParts3D — {muscle_count} componentes musculares "
-            f"e {skeletal_count} conjuntos ósseos selecionáveis.</p>"
-            if self.model_source.startswith("BodyParts3D")
-            else "<p><b>Modelo inicial:</b> representação didática simplificada, sem precisão clínica.</p>"
-        )
+        counts: dict[str, int] = {}
+        for identifier in self.actors:
+            system = self.catalog[identifier].system
+            counts[system] = counts.get(system, 0) + 1
+        coverage = " • ".join(f"{escape(name)}: {count}" for name, count in counts.items())
         self.details.setHtml(
             "<h2>Anatomia Viva 3D</h2>"
             "<p>Gire o modelo arrastando, use a roda para aproximar e clique em uma estrutura.</p>"
             "<p>Use a lista à esquerda para pesquisar, selecionar ou ocultar partes.</p>"
-            + source_note
+            f"<p><b>Atlas:</b> {escape(self.atlas.label)} — {len(self.actors)} estruturas.</p>"
+            f"<p>{coverage}</p>"
+            f"<p><b>Cobertura:</b> {escape(self.atlas.coverage_note)}</p>"
+            "<hr><small>Atlas educacional. Não deve ser usado para diagnóstico ou planejamento clínico.</small>"
         )
 
-    def _replace_model(self, meshes: dict[str, pv.PolyData], source: str) -> None:
+    def _replace_model(self, atlas: AtlasModel) -> None:
         if self.plotter.iren is not None:
             self.plotter.disable_picking()
         self.plotter.clear()
-        self.meshes = meshes
-        self.model_source = source
+        self.atlas = atlas
+        self.meshes = atlas.meshes
+        self.structures = atlas.structures
+        self.catalog = atlas.catalog
+        self.colors = atlas.colors
+        self.model_source = atlas.label
         self.actors.clear()
-        self.actor_ids.clear()
+        self.block_ids.clear()
         self.structure_opacities.clear()
         self.tree.clear()
         self.items.clear()
@@ -410,57 +496,58 @@ class AnatomyWindow(QMainWindow):
         self._populate_tree()
         self._show_all()
         self._show_welcome()
-        self.model_badge.setText(f"  Modelo: {source}  ")
-        self.statusBar().showMessage(f"Modelo ativo: {source}")
+        self.model_badge.setText(f"  Modelo: {atlas.label}  ")
+        self.statusBar().showMessage(f"Modelo ativo: {atlas.label}")
 
     def _use_detailed_model(self) -> None:
         if not is_installed():
             QMessageBox.information(
                 self,
-                "BodyParts3D ainda não instalado",
+                "Modelo legado ainda não instalado",
                 "Feche o aplicativo e execute no terminal:\n\n"
-                "anatomia-dados instalar\n\n"
-                "O conjunto completo ocupa cerca de 1 GB e downloads interrompidos podem ser retomados.",
+                "python -m anatomia_app.bodyparts3d instalar\n\n"
+                "Esse fallback histórico ocupa cerca de 1 GB. O atlas moderno Z-Anatomy "
+                "é a opção recomendada no menu Dados.",
             )
             return
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
-            meshes = load_meshes()
-            self._replace_model(meshes, model_label())
+            self._replace_model(self._legacy_atlas(load_meshes(), model_label()))
         except (OSError, RuntimeError, ValueError) as error:
             QMessageBox.critical(self, "Erro ao carregar modelo", str(error))
         finally:
             QApplication.restoreOverrideCursor()
 
     def _use_demo_model(self) -> None:
-        self._replace_model(build_demo_meshes(), "Demonstração")
+        self._replace_model(self._legacy_atlas(build_demo_meshes(), "Demonstração"))
 
     def _update_anatomy_content(self) -> None:
-        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
-        try:
-            manifest = fetch_manifest()
-        except ContentUpdateError as error:
-            QMessageBox.warning(self, "Atualização indisponível", str(error))
+        existing = installed_zanatomy_dir()
+        if existing is not None:
+            if self.atlas.label.startswith("Z-Anatomy"):
+                QMessageBox.information(
+                    self,
+                    "Atlas moderno instalado",
+                    f"A revisão Z-Anatomy {ATLAS_VERSION} já está instalada e íntegra, "
+                    f"com {len(self.meshes)} estruturas carregadas. Novas revisões serão "
+                    "publicadas junto às próximas versões do aplicativo.",
+                )
+                return
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            try:
+                self._replace_model(load_zanatomy(existing))
+            except (OSError, RuntimeError, ValueError) as error:
+                QMessageBox.critical(self, "Falha ao carregar o atlas moderno", str(error))
+            finally:
+                QApplication.restoreOverrideCursor()
             return
-        finally:
-            QApplication.restoreOverrideCursor()
 
-        local_version = content_version()
-        if not update_available(manifest.version, local_version):
-            QMessageBox.information(
-                self,
-                "Biblioteca atualizada",
-                f"Você já possui a biblioteca anatômica {local_version or manifest.version}, "
-                f"com {len(self.meshes)} estruturas carregáveis.",
-            )
-            return
-
-        size_mb = manifest.archive_size / (1024 * 1024)
+        size_mb = TOTAL_DOWNLOAD_SIZE / (1024 * 1024)
         answer = QMessageBox.question(
             self,
-            "Nova biblioteca anatômica",
-            f"A versão {manifest.version} contém {manifest.structure_count} estruturas "
-            f"e ocupa {size_mb:.0f} MB para download. Deseja instalar agora?",
+            "Instalar atlas moderno",
+            f"O atlas Z-Anatomy {ATLAS_VERSION} contém 2.827 estruturas em sete "
+            f"sistemas e ocupa {size_mb:.0f} MB para download. Deseja instalar agora?",
         )
         if answer != QMessageBox.StandardButton.Yes:
             return
@@ -469,30 +556,31 @@ class AnatomyWindow(QMainWindow):
             "Baixando a biblioteca anatômica…",
             "Cancelar",
             0,
-            manifest.archive_size,
+            TOTAL_DOWNLOAD_SIZE,
             self,
         )
         progress.setWindowTitle("Atualização de conteúdo")
         progress.setWindowModality(Qt.WindowModality.WindowModal)
         progress.setMinimumDuration(0)
 
-        def report(downloaded: int, _total: int | None) -> None:
+        def report(downloaded: int, _total: int, name: str) -> None:
+            progress.setLabelText(f"Baixando e validando {name}…")
             progress.setValue(downloaded)
             QApplication.processEvents()
             if progress.wasCanceled():
-                raise UpdateCancelled("Atualização cancelada pelo usuário.")
+                raise InterruptedError("Atualização cancelada pelo usuário.")
 
         try:
-            archive = download_content(manifest, progress=report)
-            progress.setLabelText("Validando e instalando as estruturas…")
+            installed_dir = install_zanatomy(USER_DATA_DIR, progress=report)
+            progress.setRange(0, 0)
+            progress.setLabelText("Decodificando as 2.827 estruturas 3D…")
             QApplication.processEvents()
-            installed_dir = install_content_archive(archive, manifest)
-            meshes = load_meshes(installed_dir)
-            self._replace_model(meshes, model_label(installed_dir))
-        except UpdateCancelled:
+            atlas = load_zanatomy(installed_dir)
+            self._replace_model(atlas)
+        except InterruptedError:
             self.statusBar().showMessage("Atualização da biblioteca cancelada")
             return
-        except (ContentUpdateError, OSError, RuntimeError, ValueError) as error:
+        except (OSError, RuntimeError, ValueError) as error:
             QMessageBox.critical(self, "Falha na atualização", str(error))
             return
         finally:
@@ -501,16 +589,23 @@ class AnatomyWindow(QMainWindow):
         QMessageBox.information(
             self,
             "Biblioteca atualizada",
-            f"A biblioteca {manifest.version} foi instalada com "
-            f"{manifest.structure_count} estruturas.",
+            f"O atlas Z-Anatomy {ATLAS_VERSION} foi instalado com 2.827 estruturas. "
+            "A cobertura e as licenças podem ser consultadas no menu Dados.",
         )
 
     def _show_model_credits(self) -> None:
         QMessageBox.about(
             self,
-            "Créditos e licença",
-            f"{current_attribution()}\n\nConsulte THIRD_PARTY_LICENSES.md para os termos aplicáveis.\n"
-            "Fonte: dbarchive.biosciencedbc.jp/en/bodyparts3d/",
+            "Fonte, cobertura e licenças",
+            f"Modelo: {self.atlas.label}\n"
+            f"Versão: {self.atlas.version}\n"
+            f"Revisão: {self.atlas.revision}\n\n"
+            f"Cobertura: {self.atlas.coverage_note}\n\n"
+            f"Atribuição: {self.atlas.attribution}\n"
+            f"Licença: {self.atlas.license_name}\n"
+            f"Fonte: {self.atlas.source}\n\n"
+            "Consulte THIRD_PARTY_LICENSES.md e o relatório de cobertura. "
+            "Nenhuma base aberta garante, sozinha, toda estrutura anatômica humana.",
         )
 
     def _set_selected_opacity(self, value: int) -> None:
@@ -566,7 +661,7 @@ class AnatomyWindow(QMainWindow):
         self._restore_structure_opacities()
         self._tree_updating = True
         for structure_id, actor in self.actors.items():
-            structure = CATALOG[structure_id]
+            structure = self.catalog[structure_id]
             visible = system is None or structure.system == system
             actor.visibility = visible
             self.items[structure_id].setCheckState(

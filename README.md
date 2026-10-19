@@ -2,80 +2,80 @@
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Licença MIT](https://img.shields.io/badge/código-MIT-2ea44f)](LICENSE)
-[![Status](https://img.shields.io/badge/status-em%20desenvolvimento-f59e0b)](#próximos-passos)
+[![Atlas](https://img.shields.io/badge/atlas-Z--Anatomy%202026.09-b3272d)](#cobertura-anatômica)
 [![Windows](https://img.shields.io/badge/Windows-instalador-0078D4?logo=windows)](https://github.com/luizpaulo-antunes/anatomia-viva-3d/releases/latest/download/AnatomiaViva3D-Windows.zip)
 
-Um atlas anatômico 3D, local e interativo, criado para tornar o estudo de anatomia mais visual, exploratório e acessível.
-
-O **Anatomia Viva 3D** permite navegar pelo corpo humano, pesquisar estruturas, selecionar músculos e ossos diretamente no modelo e consultar informações didáticas. O projeto é escrito em Python e utiliza PySide6, PyVista e VTK.
+Atlas anatômico 3D local e interativo para estudo. Permite explorar estruturas, pesquisar em português ou latim, selecionar diretamente no corpo, isolar sistemas e consultar informações e proveniência sem depender de uma conexão durante o uso.
 
 > [!IMPORTANT]
-> Este é um projeto educacional em desenvolvimento. A geometria e os textos são materiais didáticos resumidos e não devem ser usados para diagnóstico, planejamento clínico ou como única fonte de informação médica.
+> Este é um recurso educacional. Não deve ser usado para diagnóstico, planejamento clínico ou como única fonte de informação médica.
 
 ## Download para Windows
 
 [**Baixar o instalador do Anatomia Viva 3D (.zip)**](https://github.com/luizpaulo-antunes/anatomia-viva-3d/releases/latest/download/AnatomiaViva3D-Windows.zip)
 
-Extraia o ZIP e execute `AnatomiaViva3D-Setup-<versão>.exe`. O pacote inclui o aplicativo e a biblioteca anatômica atual; não é necessário instalar Python.
+Extraia o ZIP e execute `AnatomiaViva3D-Setup-<versão>.exe`. Python e a biblioteca anatômica já acompanham o instalador.
 
-## Visão do projeto
+## O que há no aplicativo
 
-Aprender anatomia exige entender relações espaciais que nem sempre ficam claras em imagens planas. A proposta deste projeto é oferecer um ambiente em que o estudante possa observar, girar, aproximar, ocultar e isolar estruturas enquanto estuda seus nomes e funções.
+- rotação, zoom, deslocamento e vistas anatômicas predefinidas;
+- **2.827 malhas selecionáveis**, renderizadas de forma otimizada em um único conjunto composto;
+- ossos, articulações/ligamentos/fáscias, músculos, cardiovascular, linfático, nervoso e vísceras;
+- seleção pelo modelo ou pela árvore, com foco automático na estrutura;
+- contexto translúcido para revelar estruturas encobertas;
+- pesquisa por nome em português, termo latino, sistema e região;
+- isolamento, ocultação, opacidade e filtros por sistema;
+- nomes em português associados à Terminologia Anatomica 2 quando disponíveis;
+- fonte, revisão, licença e identificador TA2 exibidos por estrutura;
+- relatório de cobertura e verificação SHA-256 de todos os arquivos baixados;
+- funcionamento offline depois da instalação;
+- modelo BodyParts3D anterior preservado somente como fallback de compatibilidade.
 
-O aplicativo funciona localmente e foi pensado para evoluir gradualmente com conteúdos revisados, novos sistemas anatômicos, exercícios, acompanhamento de progresso e recursos de inteligência artificial voltados ao aprendizado.
+## Cobertura anatômica
 
-## Recursos atuais
+A revisão atual usa uma exportação GLB do **Z-Anatomy de 21/09/2026**, fixada pelo commit `8ca3b7421bcf`, e a revisão de terminologia do repositório oficial de **18/10/2026**, commit `767f14e0a4df`. O aplicativo não baixa silenciosamente “a última versão”: cada arquivo possui versão, tamanho e hash conhecidos, tornando a instalação reproduzível.
 
-- visualização 3D com rotação, zoom e deslocamento;
-- vistas anterior, posterior, lateral e superior;
-- seleção pelo modelo ou pela árvore de estruturas;
-- foco automático da câmera na estrutura selecionada;
-- contexto anatômico translúcido para revelar estruturas encobertas;
-- pesquisa por nome em português e termo anatômico internacional;
-- fichas com descrição, função, inserção e inervação, quando disponíveis;
-- isolamento, ocultação e controle de opacidade;
-- filtros para exibir tudo, somente ossos ou somente músculos;
-- organização dos músculos por região anatômica;
-- mãos e pés dentro da cobertura fornecida pelo modelo de origem;
-- cache VTP otimizado para inicialização e navegação mais rápidas;
-- biblioteca anatômica atualizável pelo próprio aplicativo;
-- modo demonstrativo que funciona sem baixar dados externos.
+| Sistema | Malhas selecionáveis |
+| --- | ---: |
+| Esquelético | 277 |
+| Articulações, ligamentos e fáscias | 349 |
+| Muscular | 669 |
+| Cardiovascular | 676 |
+| Linfático | 158 |
+| Nervoso | 580 |
+| Órgãos e vísceras | 118 |
+| **Total** | **2.827** |
 
-## Cobertura anatômica atual
+Na auditoria automatizada desta revisão:
 
-A versão atual prepara **443 estruturas selecionáveis**:
+- 2.722 itens, ou **96,3%**, são associados automaticamente a uma entrada da TA2;
+- 2.235 malhas possuem uma descrição de referência na fonte;
+- 56 nomes-base da fonte não têm associação exata automática com a TA2;
+- três rótulos de origem são explicitamente marcados como não identificados, sem inventar um nome anatômico;
+- os 669 itens do sistema muscular incluem músculos e também porções, fáscias, tendões e estruturas relacionadas — não são “669 músculos únicos”.
 
-- **422 malhas musculares**;
-- **21 conjuntos ósseos**, incluindo mãos, pés, patelas e cintura escapular.
+Anatomia “completa” não é um número universal. A TA2 documenta entidades e relações anatômicas; uma malha 3D pode representar um órgão inteiro, uma parte, uma cabeça muscular ou estruturas bilaterais separadas. Por isso, o projeto considera uma versão completa quando todos os arquivos declarados estão íntegros, toda malha possui identificação e proveniência, as lacunas são mensuradas e nenhuma limitação é escondida. Isso não significa que uma única base aberta contenha toda variação humana ou toda entidade da terminologia.
 
-Os músculos abrangem cabeça, pescoço, dorso, tórax, abdome, pelve e períneo, ombro e braço, antebraço, mão, quadril e coxa, perna e pé. Cabeças, ventres e porções fornecidas separadamente pela base podem ser estudados de forma independente.
+Consulte [Fontes, atualidade e limites](docs/FONTES_E_COBERTURA.md) e [Dados e licenças de terceiros](THIRD_PARTY_LICENSES.md).
 
-Neste projeto, “cobertura muscular completa” significa toda a cobertura classificada como muscular e disponibilizada pelo **BodyParts3D 3.0** utilizado nesta etapa. Isso não equivale a todos os músculos descritos por todas as convenções anatômicas. A granularidade e os identificadores FMA da fonte são preservados sempre que possível.
+## Atualização dos dados
 
-## Instalador do Windows
+O instalador inclui a revisão estável. No aplicativo, use **Dados → Instalar/atualizar atlas moderno…**. O download tem aproximadamente 20 MB, é salvo no perfil do usuário e cada arquivo é validado antes da ativação. Uma falha não substitui a biblioteca válida existente.
 
-O projeto já possui um fluxo automatizado para gerar:
+Pelo terminal:
 
-```text
-AnatomiaViva3D-Windows.zip
-└── AnatomiaViva3D-Setup-<versão>.exe
+```bash
+anatomia-dados instalar
+anatomia-dados verificar
+anatomia-dados status
+anatomia-dados relatorio
 ```
 
-Cada Release também preserva uma cópia identificada, como `AnatomiaViva3D-Windows-0.3.0.zip`. O link de download acima sempre aponta para a versão estável mais recente.
-
-O instalador inclui Python, a interface, o mecanismo 3D e as 443 estruturas otimizadas. Assim, o usuário pode estudar offline sem instalar dependências ou baixar as malhas brutas.
-
-Após a instalação, o menu **Dados → Atualizar biblioteca anatômica…** pode receber revisões de conteúdo publicadas nas [Releases do projeto](https://github.com/luizpaulo-antunes/anatomia-viva-3d/releases). O download é informado previamente, validado com SHA-256 e armazenado no perfil do usuário, preservando o conteúdo original como fallback.
-
-Consulte [Instalador do Windows](docs/INSTALADOR_WINDOWS.md) para detalhes do build e da publicação.
+O relatório informa contagem por sistema, associação TA2, descrições disponíveis, nomes não associados e limitações declaradas.
 
 ## Executar pelo código-fonte
 
-### Requisitos
-
-- Python 3.10 ou mais recente;
-- computador com suporte a OpenGL;
-- Windows, macOS ou Linux.
+Requisitos: Python 3.10 ou superior e computador com suporte a OpenGL.
 
 ### macOS ou Linux
 
@@ -84,6 +84,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -e .
+anatomia-dados instalar
 anatomia-3d
 ```
 
@@ -94,41 +95,24 @@ py -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -e .
+anatomia-dados instalar
 anatomia-3d
 ```
 
-Também é possível iniciar com:
-
-```bash
-python -m anatomia_app
-```
-
-## Preparar o modelo detalhado para desenvolvimento
-
-As malhas grandes não fazem parte do histórico do Git. Para preparar localmente o modelo BodyParts3D detalhado:
-
-```bash
-anatomia-dados instalar
-anatomia-dados otimizar
-anatomia-dados status
-```
-
-O processo utiliza o arquivo oficial quando disponível ou baixa as malhas necessárias do espelho público da versão 3.0. As fontes ocupam aproximadamente 1,2 GB antes da otimização e permanecem em `data/bodyparts3d`, que está ignorado pelo Git.
-
-Consulte [Dados e licenças de terceiros](THIRD_PARTY_LICENSES.md) antes de redistribuir qualquer pacote anatômico.
+O primeiro comando de dados baixa a revisão fixada para `data/zanatomy`. Os arquivos grandes ficam fora do histórico do Git.
 
 ## Controles
 
 | Ação | Controle |
 | --- | --- |
-| Girar o modelo | Arrastar com o botão esquerdo |
-| Aproximar ou afastar | Roda do mouse |
-| Deslocar a câmera | Arrastar com o botão direito |
-| Estudar uma estrutura | Clicar no modelo ou na lista |
-| Mostrar ou ocultar | Marcar a caixa ao lado da estrutura |
-| Recuperar a visão completa | Clicar em **Exibir todas as estruturas** |
+| Girar | arrastar com o botão esquerdo |
+| Zoom | roda do mouse |
+| Deslocar câmera | arrastar com o botão direito |
+| Selecionar | clicar no modelo ou na lista |
+| Mostrar/ocultar | caixa ao lado da estrutura |
+| Restaurar contexto | **Exibir todas as estruturas** |
 
-Ao selecionar uma estrutura, a câmera a centraliza e aproxima automaticamente. As demais partes ficam translúcidas para preservar o contexto sem esconder o item estudado.
+Ao selecionar uma estrutura, a câmera a enquadra e as demais partes ficam translúcidas. A renderização usa blocos compostos para manter seleção individual sem criar milhares de atores gráficos separados.
 
 ## Testes
 
@@ -137,44 +121,37 @@ python -m pip install -e '.[dev]'
 python -m pytest
 ```
 
-## Organização do código
+Os testes cobrem catálogo, modelos legados, atualização segura, foco de câmera, parser GLB, descompressão Draco, transformações 3D e leitura da TA2.
+
+## Organização
 
 ```text
 src/anatomia_app/
-├── catalog.py          # catálogo e informações anatômicas
-├── muscle_data.py      # manifesto das malhas musculares FMA
-├── geometry.py         # modelo demonstrativo
-├── bodyparts3d.py      # obtenção, cache e carregamento das malhas
-├── content_updates.py  # atualização segura da biblioteca anatômica
-└── main_window.py      # interface e interação 3D
+├── atlas.py             # contrato de um atlas versionado
+├── zanatomy.py          # download, hashes, TA2, GLB/Draco e cobertura
+├── main_window.py       # interface, seleção e renderização composta
+├── catalog.py           # catálogo didático e fallback legado
+├── bodyparts3d.py       # importador legado, não usado como padrão
+└── geometry.py          # modo demonstrativo sem downloads
 
-packaging/windows/      # PyInstaller, Inno Setup e script de build
-tools/                  # geração de catálogo e pacotes de conteúdo
-tests/                  # testes automatizados
+packaging/windows/       # PyInstaller, Inno Setup e build do ZIP
+tools/                   # pacote de conteúdo e utilitários
+tests/                   # testes automatizados
 ```
 
-## Próximos passos
+## Instalador do Windows
 
-O projeto está só começando. Entre as evoluções planejadas estão:
+O pipeline gera:
 
-- ampliar ossos e adicionar órgãos, vasos e sistema nervoso;
-- revisar e aprofundar as fichas anatômicas;
-- criar quizzes de identificação diretamente no modelo 3D;
-- registrar progresso e oferecer revisão espaçada;
-- adicionar um tutor de IA contextual, ancorado em conteúdo revisado;
-- melhorar acessibilidade, desempenho e experiência de instalação;
-- estudar uma versão mobile com uma pilha gráfica própria para Android.
+```text
+AnatomiaViva3D-Windows.zip
+└── AnatomiaViva3D-Setup-<versão>.exe
+```
 
-As ideias de arquitetura para mobile e IA estão registradas no [roadmap](docs/ROADMAP_MOBILE_AI.md).
+O build baixa somente a revisão fixada, verifica hashes, executa os testes e inclui o atlas no instalador. Consulte [Instalador do Windows](docs/INSTALADOR_WINDOWS.md).
 
-## Dados, atribuição e licença
+## Licenças e contribuição
 
-O código-fonte é disponibilizado sob a [licença MIT](LICENSE). As malhas anatômicas possuem licenças e atribuições próprias e não são automaticamente relicenciadas pela licença do código.
+O código é MIT. As malhas, a terminologia e as descrições mantêm suas próprias licenças; algumas estruturas têm restrição não comercial. Veja [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) antes de redistribuir dados.
 
-O modelo detalhado utiliza dados do **BodyParts3D**, mantido pelo Database Center for Life Science, e o espelho STL mantido por Kevin Mattheus Moerman. As fontes, versões e atribuições completas estão em [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
-
-## Contribuindo
-
-Sugestões, correções anatômicas, melhorias de interface e contribuições de código serão bem-vindas conforme o projeto amadurecer. Ao relatar um problema, descreva o sistema operacional, a estrutura envolvida e, se possível, inclua uma captura de tela.
-
-Se este projeto puder ajudar alguém a compreender melhor o corpo humano, ele já estará cumprindo sua missão.
+Correções anatômicas são bem-vindas. Ao abrir uma issue, informe a estrutura, o sistema operacional, a revisão exibida em **Dados → Fonte, cobertura e licenças** e, se possível, uma captura de tela.

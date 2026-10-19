@@ -23,8 +23,8 @@ if (-not $SkipTests) {
 }
 
 if (-not $SkipDataPreparation) {
-    python -m anatomia_app.bodyparts3d instalar
-    python -m anatomia_app.bodyparts3d otimizar
+    python -m anatomia_app.zanatomy instalar --destino "data\zanatomy"
+    python -m anatomia_app.zanatomy verificar --destino "data\zanatomy"
 }
 
 python "tools\build_content_pack.py" --version $Version --output "release"

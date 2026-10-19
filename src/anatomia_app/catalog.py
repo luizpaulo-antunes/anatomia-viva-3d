@@ -18,7 +18,10 @@ class Structure:
 
     @property
     def search_text(self) -> str:
-        return " ".join((self.name, self.latin_name, self.system, self.region)).casefold()
+        aliases = " ".join(value for _label, value in self.details)
+        return " ".join(
+            (self.name, self.latin_name, self.system, self.region, aliases)
+        ).casefold()
 
 
 def muscle_pair(

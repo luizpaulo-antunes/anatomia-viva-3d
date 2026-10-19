@@ -6,7 +6,7 @@ import json
 import zipfile
 from pathlib import Path
 
-from anatomia_app.bodyparts3d import LEGACY_FMA_IDS, cache_filename
+from anatomia_app.zanatomy import SOURCE_FILES, STRUCTURE_COUNT, verify_files
 
 
 REPOSITORY = "luizpaulo-antunes/anatomia-viva-3d"
@@ -22,21 +22,20 @@ def sha256(path: Path) -> str:
 
 def build(version: str, output_dir: Path, release_tag: str) -> tuple[Path, Path]:
     project_root = Path(__file__).resolve().parents[1]
-    cache = project_root / "data" / "bodyparts3d" / "cache"
-    expected = [cache / cache_filename(identifier) for identifier in LEGACY_FMA_IDS]
-    missing = [path.name for path in expected if not path.is_file()]
-    if missing:
-        raise SystemExit(
-            f"Pacote incompleto: faltam {len(missing)} caches VTP. "
-            "Execute 'anatomia-dados instalar' e 'anatomia-dados otimizar'."
-        )
+    atlas_dir = project_root / "data" / "zanatomy"
+    verify_files(atlas_dir)
+    expected = [atlas_dir / item.name for item in SOURCE_FILES]
+    metadata_file = atlas_dir / "atlas.json"
+    if metadata_file.is_file():
+        expected.append(metadata_file)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     archive = output_dir / f"AnatomiaViva3D-Content-{version}.zip"
     metadata = {
-        "schema_version": 1,
+        "schema_version": 2,
         "content_version": version,
-        "structure_count": len(expected),
+        "atlas_version": "2026.09",
+        "structure_count": STRUCTURE_COUNT,
     }
     with zipfile.ZipFile(
         archive,
@@ -46,7 +45,7 @@ def build(version: str, output_dir: Path, release_tag: str) -> tuple[Path, Path]
     ) as bundle:
         bundle.writestr("content.json", json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
         for path in expected:
-            bundle.write(path, f"cache/{path.name}")
+            bundle.write(path, f"zanatomy/{path.name}")
 
     manifest = {
         **metadata,
